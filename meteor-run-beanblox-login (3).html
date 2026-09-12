@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meteor Run</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+        body {
+            background: radial-gradient(circle at center, #1b1b3a 0%, #090912 100%);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #game-container {
+            position: relative;
+            width: 420px;
+            height: 650px;
+            background: #0d0d1a;
+            border: 3px solid #4e4eff;
+            border-radius: 15px;
+            box-shadow: 0 0 25px rgba(78, 78, 255, 0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+        }
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            background: rgba(13, 13, 26, 0.95);
+            z-index: 10;
+            transition: opacity 0.3s ease;
+        }
+        .screen.hidden {
+            display: none;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.7);
+            letter-spacing: 2px;
+            text-align: center;
+        }
+        h2 {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            color: #ff00ff;
+            text-shadow: 0 0 10px rgba(255, 0, 255, 0.7);
+            text-align: center;
+        }
+        p {
+            font-size: 1rem;
+            margin-bottom: 8px;
+            color: #ccc;
+            text-align: center;
+        }
+        .stats-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px 20px;
+            margin: 15px 0;
+            width: 100%;
+            text-align: center;
+        }
+        .btn {
+            background: linear-gradient(135deg, #4e4eff 0%, #00ffff 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 8px 0;
+            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 80%;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 255, 255, 0.5);
+        }
+        .btn:active {
+            transform: translateY(1px);
+        }
+        canvas {
+            background: #05050f;
+            display: block;
+        }
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.6);
+            font-size: 0.9rem;
+            font-weight: bold;
+            z-index: 5;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        #powers-bar {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            padding: 0 10px;
+            z-index: 5;
+        }
+        .power-btn {
+            background: rgba(20, 20, 40, 0.85);
+            border: 2px solid #00ffff;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-align: center;
+            flex: 1;
+            margin: 0 5px;
+            box-shadow: 0 0 8px rgba(0,255,255,0.3);
+            transition: all 0.2s;
+        }
+        .power-btn:hover {
+            background: rgba(0, 255, 255, 0.2);
+        }
+        .power-btn span {
+            display: block;
+            font-size: 0.65rem;
+            color: #ff0;
+        }
+        .rank-display {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin: 5px 0;
+        }
+
+        /* ================================================
+           BEANBLOX ACCOUNT SYSTEM (login + top account bar)
+           ================================================ */
+        :root{
+            --bb-panel:#1a1a1a;
+            --bb-panel2:#232323;
+            --bb-border:#2e2e2e;
+            --bb-yellow:#f5c518;
+            --bb-yellow-dark:#c99f0e;
+            --bb-yellow-glow: rgba(245,197,24,0.35);
+            --bb-text:#f2f2f2;
+            --bb-muted:#9a9a9a;
+        }
+        .hidden{ display:none !important; }
+
+        /* ---- Login screen ---- */
+        .bb-auth-screen{
+            position:fixed; inset:0; z-index:200;
+            display:flex; align-items:center; justify-content:center;
+            background:
+              radial-gradient(circle at 15% 0%, rgba(245,197,24,0.07), transparent 40%),
+              radial-gradient(circle at 85% 100%, rgba(245,197,24,0.05), transparent 45%),
+              #0e0e0e;
+            padding:20px;
+            font-family:'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+        }
+        .bb-auth-box{
+            width:100%; max-width:360px;
+            background:var(--bb-panel); border:1px solid var(--bb-border);
+            border-radius:18px; padding:32px 28px;
+            box-shadow:0 20px 60px rgba(0,0,0,0.5);
+        }
+        .bb-auth-logo{ display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:8px; }
+        .bb-auth-logo svg{ width:48px; height:48px; filter:drop-shadow(0 0 14px var(--bb-yellow-glow)); }
+        .bb-auth-logo .bb-title{ font-size:22px; font-weight:900; color:var(--bb-text); white-space:nowrap; }
+        .bb-auth-logo .bb-title span{ color:var(--bb-yellow); }
+        .bb-auth-sub{ text-align:center; color:var(--bb-muted); font-size:12.5px; margin:0 0 22px; line-height:1.5; }
+        .bb-field{ margin-bottom:14px; }
+        .bb-field label{ display:block; font-size:12.5px; color:var(--bb-muted); margin-bottom:6px; font-weight:600; }
+        .bb-field input{
+            width:100%; background:var(--bb-panel2); border:1px solid var(--bb-border);
+            color:var(--bb-text); padding:11px 12px; border-radius:10px; font-size:14px;
+            outline:none; transition:border-color .15s; font-family:inherit;
+        }
+        .bb-field input:focus{ border-color:var(--bb-yellow); }
+        .bb-btn{
+            width:100%; background:var(--bb-yellow); color:#111; border:none;
+            padding:12px; border-radius:10px; font-weight:800; font-size:14.5px;
+            cursor:pointer; letter-spacing:.3px; transition:transform .1s, background .15s;
+            font-family:inherit;
+        }
+        .bb-btn:hover{ background:var(--bb-yellow-dark); }
+        .bb-btn:active{ transform:scale(0.98); }
+        .bb-btn:disabled{ opacity:.5; cursor:not-allowed; }
+        .bb-msg{
+            font-size:13px; padding:10px 12px; border-radius:8px; margin-bottom:14px; display:none;
+        }
+        .bb-msg.error{ background:rgba(255,90,90,0.1); color:#ff9a9a; border:1px solid rgba(255,90,90,0.3); display:block; }
+        .bb-msg.ok{ background:rgba(62,203,110,0.1); color:#7fe3a0; border:1px solid rgba(62,203,110,0.3); display:block; }
+        .bb-config-warning{
+            background:rgba(245,197,24,0.1); border:1px solid var(--bb-yellow);
+            color:#ffe28a; padding:14px 16px; border-radius:10px; font-size:13px;
+            margin:0 auto; max-width:600px; line-height:1.5;
+        }
+
+        /* ---- Top account bar (same look as BeanBlox) ---- */
+        .bb-topbar{
+            position:fixed; top:0; left:0; width:100%; z-index:150;
+            display:flex; align-items:center; justify-content:space-between;
+            gap:10px; padding:10px 16px;
+            background:var(--bb-panel); border-bottom:1px solid var(--bb-border);
+            font-family:'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+        }
+        .bb-brand{
+            display:flex; align-items:center; gap:10px;
+            font-weight:800; font-size:20px; color:var(--bb-text); white-space:nowrap;
+        }
+        .bb-brand svg{ width:28px; height:28px; flex-shrink:0; }
+        .bb-brand span span{ color:var(--bb-yellow); }
+        .bb-topbar-right{ display:flex; align-items:center; gap:10px; }
+        .bb-cash-chip{
+            display:flex; align-items:center; gap:8px;
+            background:var(--bb-panel2); border:1px solid var(--bb-border);
+            padding:6px 14px; border-radius:999px;
+            font-weight:800; font-size:14px; color:var(--bb-yellow);
+            white-space:nowrap;
+        }
+        .bb-cash-chip svg{ width:18px; height:18px; flex-shrink:0; color:var(--bb-yellow); }
+        .bb-user-chip{
+            display:flex; align-items:center; gap:10px;
+            background:var(--bb-panel2); border:1px solid var(--bb-border);
+            padding:6px 8px 6px 12px; border-radius:999px;
+        }
+        .bb-user-chip .bb-name{ font-size:13px; font-weight:700; color:var(--bb-text); }
+        .bb-user-chip .bb-mini-avatar{
+            width:28px; height:28px; border-radius:50%; display:flex; align-items:center;
+            justify-content:center; overflow:hidden; flex-shrink:0;
+        }
+        .bb-user-chip .bb-mini-avatar img{ width:100%; height:100%; object-fit:cover; }
+        .bb-user-chip .bb-mini-avatar svg{ width:16px; height:16px; }
+        .bb-logout-btn{
+            background:transparent; border:1px solid var(--bb-border); color:var(--bb-muted);
+            width:30px; height:30px; border-radius:50%; cursor:pointer;
+            display:flex; align-items:center; justify-content:center;
+        }
+        .bb-logout-btn:hover{ color:var(--bb-yellow); border-color:var(--bb-yellow); }
+        .bb-crown-badge{ display:inline-flex; vertical-align:middle; margin-left:6px; color:var(--bb-yellow); }
+        .bb-crown-badge svg{ width:14px; height:14px; }
+
+        /* Push the game down below the fixed top bar once logged in */
+        body.bb-logged-in{ padding-top:56px; height:auto; min-height:100vh; }
+    </style>
+</head>
+<body>
+
+<!-- ============== FIREBASE CONFIG WARNING ============== -->
+<div id="bbConfigWarning" class="hidden" style="position:fixed;inset:0;z-index:250;display:flex;align-items:center;justify-content:center;background:#0e0e0e;padding:20px;">
+  <div class="bb-config-warning">
+    <b>⚠ Firebase is not configured.</b><br>
+    Fill in the <code>firebaseConfig</code> object near the top of the JavaScript ("BEANBLOX ACCOUNT SYSTEM" section) with the same data used in your BeanBlox file.
+  </div>
+</div>
+
+<!-- ============== BEANBLOX LOGIN SCREEN (login only, no sign up) ============== -->
+<div id="bbAuthScreen" class="bb-auth-screen hidden">
+  <div class="bb-auth-box">
+    <div class="bb-auth-logo">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 12c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8-8-3.6-8-8Z" stroke="#f5c518" stroke-width="2"/><rect x="9" y="9" width="6" height="6" rx="1.5" fill="#f5c518"/></svg>
+      <div class="bb-title">BEAN<span>BLOX</span></div>
+    </div>
+    <p class="bb-auth-sub">Log in with your BeanBlox account to play Meteor Run.<br>New here? Create an account in BeanBlox first — you can't sign up from this page.</p>
+
+    <div id="bbAuthMsg" class="bb-msg"></div>
+
+    <form id="bbLoginForm">
+      <div class="bb-field">
+        <label>Username</label>
+        <input type="text" id="bbLoginUsername" autocomplete="username" required maxlength="20">
+      </div>
+      <div class="bb-field">
+        <label>Password</label>
+        <input type="password" id="bbLoginPassword" autocomplete="current-password" required minlength="6">
+      </div>
+      <button type="submit" class="bb-btn" id="bbLoginBtn">Log In</button>
+    </form>
+  </div>
+</div>
+
+<!-- ============== TOP ACCOUNT BAR (shown once logged in) ============== -->
+<div id="bbTopbar" class="bb-topbar hidden">
+  <div class="bb-brand">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M4 12c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8-8-3.6-8-8Z" stroke="#f5c518" stroke-width="2"/><rect x="9" y="9" width="6" height="6" rx="1.5" fill="#f5c518"/></svg>
+    <span>BEAN<span>BLOX</span></span>
+  </div>
+  <div class="bb-topbar-right">
+    <div class="bb-cash-chip" title="Cash">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7H5a2 2 0 0 1-2-2 2 2 0 0 1 2-2h13v4Z"/><path d="M3 7v12a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/><path d="M20 15a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1Z"/></svg>
+      <span id="bbCashAmount">0</span>
+    </div>
+    <div class="bb-user-chip">
+      <div class="bb-mini-avatar" id="bbChipAvatar"></div>
+      <span class="bb-name" id="bbChipName">-</span>
+      <button class="bb-logout-btn" id="bbLogoutBtn" title="Log out">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="game-container" class="hidden">
+    <!-- MENU SCREEN -->
+    <div id="menu-screen" class="screen">
+        <h1>METEOR RUN</h1>
+        <div class="stats-box">
+            <div class="rank-display" id="menu-rank">Rank: Space Cadet</div>
+            <p>Trophies: <span id="menu-trophies">0</span> 🏆</p>
+            <p>Total Coins: <span id="menu-coins">0</span> 🪙</p>
+        </div>
+        <button class="btn" onclick="startGame()">Play Game</button>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="game-screen" class="screen hidden" style="padding: 0;">
+        <div id="hud">
+            <div>Avoided: <span id="hud-meteors">0</span></div>
+            <div>Coins: <span id="hud-coins">0</span> 🪙</div>
+        </div>
+        <canvas id="gameCanvas" width="420" height="650"></canvas>
+        <div id="powers-bar">
+            <button class="power-btn" onclick="usePowerShield()">
+                🛡️ Shield
+                <span>[1] - 10 coins</span>
+            </button>
+            <button class="power-btn" onclick="usePowerBomb()">
+                💣 Bomb
+                <span>[2] - 20 coins</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- GAMEOVER SCREEN -->
+    <div id="gameover-screen" class="screen hidden">
+        <h2>GAME OVER</h2>
+        <div class="stats-box">
+            <p>Avoided Meteors: <span id="go-meteors">0</span></p>
+            <p>Trophies Earned: <span id="go-trophies" style="color: #00ffff; font-weight: bold;">0</span> 🏆</p>
+            <p>Collected Coins: <span id="go-coins">0</span> 🪙</p>
+            <div id="go-rank-up" style="margin-top: 10px; color: #ff00ff; font-weight: bold;"></div>
+        </div>
+        <button class="btn" onclick="startGame()">Play Again</button>
+        <button class="btn" style="background: linear-gradient(135deg, #555 0%, #222 100%); box-shadow: none;" onclick="returnToMenu()">Main Menu</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-auth-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-firestore-compat.min.js"></script>
+
+<script>
+/* =========================================================
+   BEANBLOX ACCOUNT SYSTEM
+   Log in only — uses the SAME Firebase project as BeanBlox so
+   the same accounts (username, password, cash, avatar, Bean Plus)
+   work here. Registration is intentionally NOT included: an
+   account must already exist (created in BeanBlox) to play.
+   ========================================================= */
+
+/* Paste the SAME firebaseConfig object you use in your BeanBlox
+   file here, so both pages point at the same Firebase project. */
+const firebaseConfig = {
+  apiKey: "AIzaSyAM0xa6VPoiA9zr-r2BMynHfrQ6n4nQyFU",
+  authDomain: "playzone-acafc.firebaseapp.com",
+  projectId: "playzone-acafc",
+  storageBucket: "playzone-acafc.firebasestorage.app",
+  messagingSenderId: "205790490959",
+  appId: "1:205790490959:web:51d5f0b6d970fde78f953a"
+};
+
+const BB_INTERNAL_DOMAIN = "@beanblox.internal"; // must match BeanBlox exactly
+
+let bbAuth, bbDb;
+let bbFirebaseReady = false;
+let bbCurrentUid = null;
+let bbCurrentUserDoc = null;
+
+function bbIsConfigFilled(cfg){
+  return cfg.apiKey && !cfg.apiKey.includes("YOUR_") && cfg.projectId && !cfg.projectId.includes("YOUR_");
+}
+
+if (bbIsConfigFilled(firebaseConfig)) {
+  try{
+    firebase.initializeApp(firebaseConfig);
+    bbAuth = firebase.auth();
+    bbDb = firebase.firestore();
+    bbFirebaseReady = true;
+  }catch(e){
+    console.error("Firebase init error:", e);
+  }
+}
+
+/* ---------- avatar rendering (same icon set as BeanBlox) ---------- */
+const BB_AVATAR_ICONS = {
+  circle:   {bg:'#f5c518', svg:'<svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>'},
+  bolt:     {bg:'#c99f0e', svg:'<svg viewBox="0 0 24 24" fill="#111"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>'},
+  star:     {bg:'#e0b012', svg:'<svg viewBox="0 0 24 24" fill="#111"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.9L5.7 21l1.7-7L2 9.2l7.1-.6L12 2Z"/></svg>'},
+  hex:      {bg:'#f5c518', svg:'<svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><path d="M12 2l8 4.5v11L12 22l-8-4.5v-11L12 2Z"/></svg>'},
+  diamond:  {bg:'#d6ad10', svg:'<svg viewBox="0 0 24 24" fill="#111"><path d="M12 2 2 9l10 13L22 9 12 2Z"/></svg>'},
+  skull:    {bg:'#000', svg:'<svg viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="2"><circle cx="12" cy="10" r="7"/><path d="M9 17v3M15 17v3M9 10h.01M15 10h.01"/></svg>'},
+};
+const BB_DEFAULT_AVATAR = 'circle';
+
+function bbRenderAvatarIcon(key, size){
+  const icon = BB_AVATAR_ICONS[key] || BB_AVATAR_ICONS[BB_DEFAULT_AVATAR];
+  return `<div style="width:100%;height:100%;border-radius:50%;background:${icon.bg};display:flex;align-items:center;justify-content:center;">
+    <div style="width:${Math.round(size*0.55)}px;height:${Math.round(size*0.55)}px;">${icon.svg}</div>
+  </div>`;
+}
+function bbRenderAvatarContent(userDoc, size){
+  if(userDoc && userDoc.avatarPhoto){
+    return `<img src="${userDoc.avatarPhoto}" alt="Profile picture">`;
+  }
+  return bbRenderAvatarIcon(userDoc ? userDoc.avatarIcon : null, size);
+}
+
+const BB_CROWN_BADGE_SVG = '<span class="bb-crown-badge" title="Bean Plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18h18"/><path d="M4 18 2.5 8l5 3.5L12 5l4.5 6.5 5-3.5L20 18"/></svg></span>';
+
+function bbIsPlusActive(userDoc){
+  if(!userDoc || !userDoc.plusUntil) return false;
+  const until = userDoc.plusUntil.toDate ? userDoc.plusUntil.toDate() : new Date(userDoc.plusUntil);
+  return until.getTime() > Date.now();
+}
+
+function bbEscapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+/* ---------- screen switching ---------- */
+function bbShowAuth(){
+  document.getElementById('bbAuthScreen').classList.remove('hidden');
+  document.getElementById('bbTopbar').classList.add('hidden');
+  document.getElementById('game-container').classList.add('hidden');
+  document.body.classList.remove('bb-logged-in');
+}
+function bbShowApp(){
+  document.getElementById('bbAuthScreen').classList.add('hidden');
+  document.getElementById('bbTopbar').classList.remove('hidden');
+  document.getElementById('game-container').classList.remove('hidden');
+  document.body.classList.add('bb-logged-in');
+  bbRenderTopbar();
+  if(typeof bbLoadMeteorRunStats === 'function'){ bbLoadMeteorRunStats(); }
+}
+function bbRenderTopbar(){
+  if(!bbCurrentUserDoc) return;
+  document.getElementById('bbChipName').innerHTML = bbEscapeHtml(bbCurrentUserDoc.username)
+    + (bbIsPlusActive(bbCurrentUserDoc) ? BB_CROWN_BADGE_SVG : '');
+  document.getElementById('bbChipAvatar').innerHTML = bbRenderAvatarContent(bbCurrentUserDoc, 28);
+  document.getElementById('bbCashAmount').textContent = bbCurrentUserDoc.cash || 0;
+}
+function bbClearAuthMsg(){
+  const m = document.getElementById('bbAuthMsg');
+  m.className = 'bb-msg'; m.textContent = '';
+}
+function bbSetAuthMsg(text, type){
+  const m = document.getElementById('bbAuthMsg');
+  m.className = 'bb-msg ' + type;
+  m.textContent = text;
+}
+
+async function bbLoadUserDoc(uid){
+  const snap = await bbDb.collection('users').doc(uid).get();
+  bbCurrentUserDoc = snap.exists ? snap.data() : null;
+}
+
+/* ---------- boot ---------- */
+window.addEventListener('DOMContentLoaded', () => {
+  if(!bbFirebaseReady){
+    document.getElementById('bbConfigWarning').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('bbAuthScreen').classList.remove('hidden');
+
+  bbAuth.onAuthStateChanged(async (user) => {
+    if(user){
+      bbCurrentUid = user.uid;
+      try{
+        await bbLoadUserDoc(user.uid);
+        if(!bbCurrentUserDoc){
+          // No profile doc for this account — this page never creates one
+          // (registration only happens in BeanBlox), so treat it as an error.
+          await bbAuth.signOut();
+          bbShowAuth();
+          bbSetAuthMsg('This account has no BeanBlox profile yet. Please log in through BeanBlox first.', 'error');
+          return;
+        }
+        bbShowApp();
+      }catch(err){
+        console.error('Failed to load account:', err);
+        await bbAuth.signOut();
+        bbShowAuth();
+        bbSetAuthMsg('Could not load your account (check that Firestore rules are published). Please try again.', 'error');
+      }
+    } else {
+      bbCurrentUid = null;
+      bbCurrentUserDoc = null;
+      bbShowAuth();
+    }
+  });
+});
+
+/* ---------- login (no registration on this page) ---------- */
+document.getElementById('bbLoginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  bbClearAuthMsg();
+  const usernameRaw = document.getElementById('bbLoginUsername').value.trim();
+  const password = document.getElementById('bbLoginPassword').value;
+  const usernameLower = usernameRaw.toLowerCase();
+  const btn = document.getElementById('bbLoginBtn');
+
+  btn.disabled = true; btn.textContent = 'Logging in...';
+  try{
+    const unameSnap = await bbDb.collection('usernames').doc(usernameLower).get();
+    if(!unameSnap.exists){
+      bbSetAuthMsg('No account with that username.', 'error');
+      btn.disabled = false; btn.textContent = 'Log In';
+      return;
+    }
+    const uid = unameSnap.data().uid;
+    const userSnap = await bbDb.collection('users').doc(uid).get();
+    if(!userSnap.exists){
+      bbSetAuthMsg('Account error. Please contact support.', 'error');
+      btn.disabled = false; btn.textContent = 'Log In';
+      return;
+    }
+    const internalEmail = userSnap.data().internalEmail;
+    await bbAuth.signInWithEmailAndPassword(internalEmail, password);
+  }catch(err){
+    console.error(err);
+    if(err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential'){
+      bbSetAuthMsg('Incorrect password.', 'error');
+    } else if(err.code === 'auth/unauthorized-domain'){
+      bbSetAuthMsg('This page\'s domain is not authorized in Firebase yet. Add it under Authentication > Settings > Authorized domains.', 'error');
+    } else {
+      bbSetAuthMsg('Login error: ' + (err.message || 'unknown error'), 'error');
+    }
+  }
+  btn.disabled = false; btn.textContent = 'Log In';
+});
+
+/* ---------- logout ---------- */
+document.getElementById('bbLogoutBtn').addEventListener('click', async () => {
+  await bbAuth.signOut();
+});
+
+/* =========================================================
+   GAME (Meteor Run) — progress (trophies & coins) is saved to
+   the player's BeanBlox account in Firestore instead of
+   localStorage, under users/{uid}.meteorRun = {trophies, coins}
+   ========================================================= */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let gameState = 'MENU'; 
+    let scoreMeteors = 0;
+    let roundCoins = 0;
+    let totalTrophies = 0;
+    let totalCoins = 0;
+
+    // Pulls the saved trophies/coins for the logged-in account out of the
+    // BeanBlox user doc (called right after login, once bbCurrentUserDoc is set).
+    function bbLoadMeteorRunStats(){
+        const saved = (bbCurrentUserDoc && bbCurrentUserDoc.meteorRun) || {};
+        totalTrophies = parseInt(saved.trophies, 10) || 0;
+        totalCoins = parseInt(saved.coins, 10) || 0;
+        updateMenuUI();
+    }
+
+    // Pushes the current trophies/coins to Firestore so progress follows the
+    // account across devices/browsers instead of living in this browser only.
+    async function bbSaveMeteorRunStats(){
+        if(!bbCurrentUid){ return; }
+        try{
+            await bbDb.collection('users').doc(bbCurrentUid).update({
+                'meteorRun.trophies': totalTrophies,
+                'meteorRun.coins': totalCoins
+            });
+            if(bbCurrentUserDoc){
+                bbCurrentUserDoc.meteorRun = { trophies: totalTrophies, coins: totalCoins };
+            }
+        }catch(err){
+            console.error('Failed to save Meteor Run progress:', err);
+        }
+    }
+
+    let player = {
+        x: 185,
+        y: 560,
+        width: 45,
+        height: 45,
+        speed: 7,
+        isShielded: false,
+        shieldTime: 0
+    };
+
+    let meteors = [];
+    let coins = [];
+    let particles = [];
+    let stars = [];
+
+    let meteorSpawnTimer = 0;
+    let coinSpawnTimer = 0;
+    let gameSpeedMultiplier = 1;
+
+    let keys = {};
+    window.addEventListener('keydown', e => {
+        keys[e.key] = true;
+        if (gameState === 'PLAYING') {
+            if (e.key === '1' || e.key === '!') usePowerShield();
+            if (e.key === '2' || e.key === '@') usePowerBomb();
+        }
+    });
+    window.addEventListener('keyup', e => {
+        keys[e.key] = false;
+    });
+
+    // Mouse and Touch Controls
+    let isDragging = false;
+    canvas.addEventListener('mousedown', e => { isDragging = true; updatePlayerPos(e); });
+    window.addEventListener('mousemove', e => { if (isDragging && gameState === 'PLAYING') updatePlayerPos(e); });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    canvas.addEventListener('touchstart', e => { isDragging = true; updatePlayerTouch(e); e.preventDefault(); });
+    canvas.addEventListener('touchmove', e => { if (isDragging && gameState === 'PLAYING') updatePlayerTouch(e); e.preventDefault(); });
+    canvas.addEventListener('touchend', () => { isDragging = false; });
+
+    function updatePlayerPos(e) {
+        let rect = canvas.getBoundingClientRect();
+        player.x = e.clientX - rect.left - player.width / 2;
+        clampPlayer();
+    }
+
+    function updatePlayerTouch(e) {
+        let rect = canvas.getBoundingClientRect();
+        if (e.touches.length > 0) {
+            player.x = e.touches[0].clientX - rect.left - player.width / 2;
+            clampPlayer();
+        }
+    }
+
+    function clampPlayer() {
+        if (player.x < 0) player.x = 0;
+        if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
+    }
+
+    // 15 Ranks System based on Trophies
+    function getRank(trophies) {
+        if (trophies >= 1000) return { name: "Legend of the Cosmos 🌌🚀", color: "#ff00ff" };
+        if (trophies >= 850) return { name: "Universe Commander 🌠", color: "#e040fb" };
+        if (trophies >= 700) return { name: "Supernova Master ⭐", color: "#aa00ff" };
+        if (trophies >= 570) return { name: "Asteroid Lord ☄️", color: "#00e5ff" };
+        if (trophies >= 450) return { name: "Cosmic Guardian 🛡️", color: "#18ffff" };
+        if (trophies >= 340) return { name: "Deep Space Veteran 🛸", color: "#00b0ff" };
+        if (trophies >= 240) return { name: "Solar Ace ☀️", color: "#2979ff" };
+        if (trophies >= 150) return { name: "Galaxy Ranger 🌟", color: "#76ff03" };
+        if (trophies >= 90) return { name: "Nebula Navigator 🧭", color: "#64dd17" };
+        if (trophies >= 50) return { name: "Comet Chaser ☄️", color: "#aeea00" };
+        if (trophies >= 25) return { name: "Star Hunter 🌠", color: "#ffd600" };
+        if (trophies >= 12) return { name: "Meteor Watcher 👀", color: "#ffab00" };
+        if (trophies >= 5) return { name: "Orbit Rookie 🛰️", color: "#ff9100" };
+        if (trophies >= 2) return { name: "Star Scout 🔭", color: "#ff6d00" };
+        return { name: "Space Cadet 🚀", color: "#ffffff" };
+    }
+
+    function updateMenuUI() {
+        document.getElementById('menu-trophies').innerText = totalTrophies;
+        document.getElementById('menu-coins').innerText = totalCoins;
+        let rank = getRank(totalTrophies);
+        let rankEl = document.getElementById('menu-rank');
+        rankEl.innerText = "Rank: " + rank.name;
+        rankEl.style.color = rank.color;
+    }
+
+    // Background Stars
+    for (let i = 0; i < 50; i++) {
+        stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 2 + 1,
+            speed: Math.random() * 2 + 0.5
+        });
+    }
+
+    function startGame() {
+        document.getElementById('menu-screen').classList.add('hidden');
+        document.getElementById('gameover-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+
+        scoreMeteors = 0;
+        roundCoins = 0;
+        meteors = [];
+        coins = [];
+        particles = [];
+        player.x = canvas.width / 2 - player.width / 2;
+        player.isShielded = false;
+        player.shieldTime = 0;
+        meteorSpawnTimer = 0;
+        coinSpawnTimer = 0;
+        gameSpeedMultiplier = 1;
+
+        gameState = 'PLAYING';
+    }
+
+    function returnToMenu() {
+        document.getElementById('gameover-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('menu-screen').classList.remove('hidden');
+        updateMenuUI();
+        gameState = 'MENU';
+    }
+
+    function usePowerShield() {
+        if (gameState !== 'PLAYING') return;
+        if (player.isShielded) return;
+        if (roundCoins >= 10) {
+            roundCoins -= 10;
+            player.isShielded = true;
+            player.shieldTime = 240; 
+            createParticles(player.x + player.width/2, player.y + player.height/2, '#00ffff', 15);
+        }
+    }
+
+    function usePowerBomb() {
+        if (gameState !== 'PLAYING') return;
+        if (roundCoins >= 20 && meteors.length > 0) {
+            roundCoins -= 20;
+            meteors.forEach(m => {
+                createParticles(m.x, m.y, '#ff4400', 10);
+            });
+            scoreMeteors += meteors.length; 
+            meteors = [];
+            createParticles(player.x + player.width/2, player.y + player.height/2, '#ffaa00', 30);
+        }
+    }
+
+    function createParticles(x, y, color, count) {
+        for (let i = 0; i < count; i++) {
+            particles.push({
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 6,
+                vy: (Math.random() - 0.5) * 6,
+                radius: Math.random() * 3 + 1,
+                color: color,
+                alpha: 1,
+                decay: Math.random() * 0.03 + 0.02
+            });
+        }
+    }
+
+    function gameOver() {
+        gameState = 'GAMEOVER';
+        
+        let trophiesEarned = scoreMeteors; 
+        totalTrophies += trophiesEarned;
+        totalCoins += roundCoins;
+
+        bbSaveMeteorRunStats();
+
+        document.getElementById('go-meteors').innerText = scoreMeteors;
+        document.getElementById('go-trophies').innerText = trophiesEarned;
+        document.getElementById('go-coins').innerText = roundCoins;
+
+        let rank = getRank(totalTrophies);
+        document.getElementById('go-rank-up').innerText = "Current Rank: " + rank.name;
+
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('gameover-screen').classList.remove('hidden');
+    }
+
+    function update() {
+        if (gameState !== 'PLAYING') return;
+
+        if (keys['ArrowLeft'] || keys['a'] || keys['A']) player.x -= player.speed;
+        if (keys['ArrowRight'] || keys['d'] || keys['D']) player.x += player.speed;
+        clampPlayer();
+
+        if (player.isShielded) {
+            player.shieldTime--;
+            if (player.shieldTime <= 0) player.isShielded = false;
+        }
+
+        // Gentle speed scaling over time
+        gameSpeedMultiplier = 1 + (scoreMeteors * 0.005);
+        if (gameSpeedMultiplier > 2.5) gameSpeedMultiplier = 2.5;
+
+        // Spawn Meteors with mixed slow & fast speeds
+        meteorSpawnTimer++;
+        let spawnInterval = Math.max(25, 45 - Math.floor(scoreMeteors / 4));
+        if (meteorSpawnTimer >= spawnInterval) {
+            meteorSpawnTimer = 0;
+            let radius = Math.random() * 15 + 14;
+            // Mixed base speeds: some meteors slow (2.0), some faster (5.5)
+            let individualBaseSpeed = Math.random() * 3.5 + 2.0;
+            meteors.push({
+                x: Math.random() * (canvas.width - radius * 2) + radius,
+                y: -radius,
+                radius: radius,
+                speed: individualBaseSpeed * gameSpeedMultiplier,
+                rotation: Math.random() * Math.PI,
+                rotSpeed: (Math.random() - 0.5) * 0.1
+            });
+        }
+
+        // Spawn Coins
+        coinSpawnTimer++;
+        if (coinSpawnTimer >= 65) {
+            coinSpawnTimer = 0;
+            let radius = 12;
+            coins.push({
+                x: Math.random() * (canvas.width - radius * 2) + radius,
+                y: -radius,
+                radius: radius,
+                speed: 3 * gameSpeedMultiplier
+            });
+        }
+
+        // Update Stars
+        stars.forEach(star => {
+            star.y += star.speed * gameSpeedMultiplier;
+            if (star.y > canvas.height) star.y = 0;
+        });
+
+        // Meteors update & collision
+        for (let i = meteors.length - 1; i >= 0; i--) {
+            let m = meteors[i];
+            m.y += m.speed;
+            m.rotation += m.rotSpeed;
+
+            if (m.y - m.radius > canvas.height) {
+                meteors.splice(i, 1);
+                scoreMeteors++; 
+                continue;
+            }
+
+            let playerCenterX = player.x + player.width / 2;
+            let playerCenterY = player.y + player.height / 2;
+            let dx = m.x - playerCenterX;
+            let dy = m.y - playerCenterY;
+            let distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < m.radius + player.width / 2.5) {
+                if (player.isShielded) {
+                    createParticles(m.x, m.y, '#00ffff', 15);
+                    meteors.splice(i, 1);
+                    player.isShielded = false;
+                } else {
+                    createParticles(playerCenterX, playerCenterY, '#ff4400', 25);
+                    gameOver();
+                    return;
+                }
+            }
+        }
+
+        // Coins update & fixed hitboxes collection
+        for (let i = coins.length - 1; i >= 0; i--) {
+            let c = coins[i];
+            c.y += c.speed;
+
+            if (c.y - c.radius > canvas.height) {
+                coins.splice(i, 1);
+                continue;
+            }
+
+            let playerCenterX = player.x + player.width / 2;
+            let playerCenterY = player.y + player.height / 2;
+            let dx = c.x - playerCenterX;
+            let dy = c.y - playerCenterY;
+            let distance = Math.sqrt(dx * dx + dy * dy); // Fixed mathematical typo here
+
+            // Expanded collection hitbox radius for smooth pickup
+            if (distance < c.radius + player.width / 1.5) {
+                roundCoins += 1; 
+                createParticles(c.x, c.y, '#ffd700', 8);
+                coins.splice(i, 1);
+            }
+        }
+
+        // Particles update
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.alpha -= p.decay;
+            if (p.alpha <= 0) particles.splice(i, 1);
+        }
+
+        document.getElementById('hud-meteors').innerText = scoreMeteors;
+        document.getElementById('hud-coins').innerText = roundCoins;
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Background stars
+        ctx.fillStyle = '#ffffff';
+        stars.forEach(star => {
+            ctx.globalAlpha = star.size / 3;
+            ctx.fillRect(star.x, star.y, star.size, star.size);
+        });
+        ctx.globalAlpha = 1;
+
+        if (gameState === 'PLAYING') {
+            // Particles
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // Coins
+            coins.forEach(c => {
+                ctx.save();
+                ctx.fillStyle = '#ffd700';
+                ctx.shadowColor = '#ffd700';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#b38f00';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('$', c.x, c.y);
+                ctx.restore();
+            });
+
+            // Meteors
+            meteors.forEach(m => {
+                ctx.save();
+                ctx.translate(m.x, m.y);
+                ctx.rotate(m.rotation);
+                ctx.fillStyle = '#8c8c8c';
+                ctx.strokeStyle = '#575757';
+                ctx.lineWidth = 3;
+                ctx.shadowColor = '#ff4400';
+                ctx.shadowBlur = 8;
+                
+                ctx.beginPath();
+                let points = 7;
+                for (let i = 0; i < points; i++) {
+                    let angle = (i / points) * Math.PI * 2;
+                    let r = m.radius * (0.8 + Math.sin(i * 3) * 0.2);
+                    let px = Math.cos(angle) * r;
+                    let py = Math.sin(angle) * r;
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            });
+
+            // Player Ship
+            ctx.save();
+            ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+            
+            if (player.isShielded) {
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 3;
+                ctx.shadowColor = '#00ffff';
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.arc(0, 0, player.width * 0.8, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = '#4e4eff';
+            ctx.strokeStyle = '#00ffff';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 10;
+
+            ctx.beginPath();
+            ctx.moveTo(0, -player.height / 2);
+            ctx.lineTo(player.width / 2, player.height / 2);
+            ctx.lineTo(0, player.height / 3);
+            ctx.lineTo(-player.width / 2, player.height / 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Engine Flame
+            ctx.fillStyle = '#ffaa00';
+            ctx.beginPath();
+            ctx.moveTo(-player.width / 4, player.height / 3);
+            ctx.lineTo(0, player.height / 2 + Math.random() * 10 + 5);
+            ctx.lineTo(player.width / 4, player.height / 3);
+            ctx.fill();
+
+            ctx.restore();
+        }
+    }
+
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    updateMenuUI();
+    loop();
+</script>
+
+</body>
+</html>
